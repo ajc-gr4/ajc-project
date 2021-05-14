@@ -1,0 +1,27 @@
+---
+- name: update
+  apt:
+    update_cache: yes
+- name: install packages
+  apt: name={{ item }} state=present
+  with_items:
+    - vim
+    - git
+    - htop
+    - zsh
+    - tmux
+- name: Create pathogen environment
+  file:
+    path: '{{ item }}'
+    state: directory
+  with_items:
+    - ~/.vim
+    - ~/.vim/autoload
+    - ~/.vim/bundle
+
+- name: Download pathogen
+  get_url:
+    url: https://tpo.pe/pathogen.vim
+    dest: ~/.vim/autoload/pathogen.vim
+    mode: '0777'
+...

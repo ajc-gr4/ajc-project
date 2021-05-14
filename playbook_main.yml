@@ -1,0 +1,14 @@
+---
+- name: appel playbooks creation vm
+  hosts: VM
+  vars:
+      user: gui
+  tasks:
+  roles:
+#      - gitlab
+#      - jenkins
+#      - lamp1
+#      - lamp2
+#      - activedirectory
+      - tools
+...      

@@ -1,0 +1,81 @@
+---
+- name: Creation d'un groupe de ressources
+  azure_rm_resourcegroup:
+    name: GrpeRessGrp4 
+    location: japanwest
+
+- name: Creation d'un rÈseau virtuel
+  azure_rm_virtualnetwork:
+    resource_group: GrpeRessGrp4
+    name: network
+    address_prefixes: "10.0.0.0/16"
+
+- name: Add subnet
+  azure_rm_subnet:
+    resource_group: GrpeRessGrp4
+    name: mySubnet
+    address_prefix: "10.0.1.0/24"
+    virtual_network: network
+
+- name: Creation d'une adresse IP publique
+  azure_rm_publicipaddress:
+    resource_group: GrpeRessGrp4
+    allocation_method: Static
+    name: myPublicIP5
+  register: output_ip_address
+
+- name: Dump public IP for VM which will be created
+  debug:
+    msg: "adresse IP publique est {{ output_ip_address.state.ip_address }}."
+
+- name: Creer un groupe de rÈseau de sÈcuritÈ 
+  azure_rm_securitygroup:
+    resource_group: GrpeRessGrp4
+    name: NetworkSG
+    rules:
+      - name: Allowrdp
+        protocol: Tcp
+        destination_port_range: 3389
+        access: Allow
+        priority: 1002
+        direction: Inbound
+      - name: Allowebtraffic
+        protocol: Tcp
+        destination_port_range: 
+          - 80
+          - 443
+        access: Allow
+        priority: 1003
+        direction: Inbound
+      - name: 'allow_powershell_remoting'
+        protocol: Tcp
+        destination_port_range:
+          - 5985
+          - 5986
+        access: Allow
+        priority: 1004
+        direction: Inbound
+
+- name: Creer une carte d'interface rÈseau virtuel
+  azure_rm_networkinterface:
+    resource_group: GrpeRessGrp4
+    name: myNIC5
+    virtual_network: network
+    subnet: mySubnet
+    public_ip_name: myPublicIP5
+    security_group: NetworkSG
+
+- name: Creation de la VM Windows
+  azure_rm_virtualmachine:
+    resource_group: GrpeRessGrp4
+    name: activedirectory
+    vm_size: Standard_DS1_v2
+    admin_username: gui
+    admin_password: "Azerty123123!"
+    network_interfaces: myNIC5
+    os_type: Windows
+    image:
+      offer: WindowsServer
+      publisher: MicrosoftWindowsServer
+      sku: 2019-Datacenter
+      version: latest

@@ -1,0 +1,95 @@
+---
+- name: Creation VM Azure
+  hosts: localhost
+  connection: local
+  vars:
+    user: gui
+  tasks:
+  - name: Creation d'un groupe de ressources
+    azure_rm_resourcegroup:
+      name: GrpeRessGrp4 
+      location: japanwest
+
+  - name: Creation d'un rÈseau virtuel
+    azure_rm_virtualnetwork:
+      resource_group: GrpeRessGrp4
+      name: network
+      address_prefixes: "10.0.0.0/16"
+
+  - name: Add subnet
+    azure_rm_subnet:
+      resource_group: GrpeRessGrp4
+      name: mySubnet
+      address_prefix: "10.0.1.0/24"
+      virtual_network: network
+
+  - name: Creation d'une adresse IP publique
+    azure_rm_publicipaddress:
+      resource_group: GrpeRessGrp4
+      allocation_method: Static
+      name: myPublicIP
+    register: output_ip_address
+
+  - name: Dump public IP for VM which will be created
+    debug:
+      msg: "adresse IP publique est {{ output_ip_address.state.ip_address }}."
+
+  - name: Creer un groupe de rÈseau de sÈcuritÈ qui autorise SSH
+    azure_rm_securitygroup:
+      resource_group: GrpeRessGrp4
+      name: NetworkSG
+      rules:
+        - name: SSH
+          protocol: Tcp
+          destination_port_range: 22
+          access: Allow
+          priority: 1001
+          direction: Inbound
+
+  - name: Creer une carte d'interface rÈseau virtuel
+    azure_rm_networkinterface:
+      resource_group: GrpeRessGrp4
+      name: myNIC
+      virtual_network: network
+      subnet: mySubnet
+      public_ip_name: myPublicIP
+      security_group: NetworkSG
+
+  - name: Creation de la VM
+    azure_rm_virtualmachine:
+      resource_group: GrpeRessGrp4
+      name: "{{ item }}"
+      vm_size: Standard_DS1_v2
+      admin_username: gui
+      ssh_password_enabled: false
+      ssh_public_keys:
+        - path: /home/gui/.ssh/authorized_keys
+          key_data: "{{lookup('file', '~/.ssh/id_rsa.pub') }}"
+      network_interfaces: myNIC
+      image:
+        offer: debian-10
+        publisher: Debian
+        sku: '10'
+        version: latest
+    with_items: 
+      - GITLAB
+      - JENKINS
+      - LAMP1
+      - LAMP2 
+
+  - name: Creation de la VM
+    azure_rm_virtualmachine:
+      resource_group: GrpeRessGrp4
+      name: activedirectory
+      vm_size: Standard_DS1_v2
+      admin_username: gui
+      ssh_password_enabled: false
+      ssh_public_keys:
+        - path: /home/gui/.ssh/authorized_keys
+          key_data: "{{lookup('file', '~/.ssh/id_rsa.pub') }}"
+      network_interfaces: myNIC
+      image:
+        offer: WindowsServer
+        publisher: MicrosoftWindowsServer
+        sku: '2019-Datacenter'
+        version: latest
